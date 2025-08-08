@@ -1,8 +1,5 @@
 ﻿using FrooxEngine;
-using HarmonyLib;
 using ResoniteModLoader;
-using System;
-using System.Threading;
 
 namespace VDFaceTracking
 {
@@ -51,7 +48,15 @@ namespace VDFaceTracking
             _config = GetConfiguration();
             _config.OnThisConfigurationChanged += OnConfigurationChanged;
 
-            new Harmony("org.zeith.VDFaceTracking").PatchAll();
+            Engine.Current.RunPostInit(() =>
+            {
+                proxy = new VDProxy();
+                if (!proxy.Initialize()) { return; }
+
+                Engine.Current.InputInterface.RegisterInputDriver(proxy);
+
+                Engine.Current.OnShutdown += () => proxy.Teardown();
+            });
         }
 
         private void OnConfigurationChanged(ConfigurationChangedEvent @event)
@@ -86,22 +91,6 @@ namespace VDFaceTracking
                 {
                     EyeExpressionMult = eyeExpressionMulti;
                 }
-            }
-        }
-
-        [HarmonyPatch(typeof(InputInterface), MethodType.Constructor)]
-        [HarmonyPatch(new Type[] { typeof(Engine) })]
-        public class InputInterfaceCtorPatch
-        {
-            public static void Postfix(InputInterface __instance)
-            {
-                proxy = new VDProxy();
-
-                if (!proxy.Initialize()) return;
-
-                __instance.RegisterInputDriver(proxy);
-
-                Engine.Current.OnShutdown += () => proxy.Teardown();
             }
         }
     }
